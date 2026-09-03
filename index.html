@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日本経済モニター</title>
+<meta name="description" content="FREDの公開統計から短期・中期・長期の日本経済指標を毎日自動取得して描画するダッシュボード">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+<style>
+:root{
+  --bg-page:#eef0f4;
+  --bg-surface:#ffffff;
+  --bg-surface-2:#f4f6fa;
+  --ink-primary:#14161c;
+  --ink-secondary:#4e5566;
+  --ink-muted:#8a90a0;
+  --gridline:#e3e5ea;
+  --baseline:#c7cbd6;
+  --border:rgba(20,22,28,0.10);
+  --series-1:#2e5aa0;
+  --series-1-wash:rgba(46,90,160,0.10);
+  --critical:#d03b3b;
+  --critical-soft:#f7e2e1;
+  --shadow-card:0 1px 2px rgba(20,22,28,0.05),0 10px 28px -16px rgba(20,22,28,0.22);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg-page:#0b0c10; --bg-surface:#15171d; --bg-surface-2:#1a1d25;
+    --ink-primary:#f2f3f6; --ink-secondary:#c3c8d6; --ink-muted:#8991a3;
+    --gridline:#262a33; --baseline:#383c48; --border:rgba(255,255,255,0.10);
+    --series-1:#6e93d1; --series-1-wash:rgba(110,147,209,0.14);
+    --critical:#e2645c; --critical-soft:#3a2222;
+    --shadow-card:0 1px 2px rgba(0,0,0,0.35),0 10px 28px -16px rgba(0,0,0,0.6);
+  }
+}
+:root[data-theme="dark"]{
+  --bg-page:#0b0c10; --bg-surface:#15171d; --bg-surface-2:#1a1d25;
+  --ink-primary:#f2f3f6; --ink-secondary:#c3c8d6; --ink-muted:#8991a3;
+  --gridline:#262a33; --baseline:#383c48; --border:rgba(255,255,255,0.10);
+  --series-1:#6e93d1; --series-1-wash:rgba(110,147,209,0.14);
+  --critical:#e2645c; --critical-soft:#3a2222;
+  --shadow-card:0 1px 2px rgba(0,0,0,0.35),0 10px 28px -16px rgba(0,0,0,0.6);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg-page);color:var(--ink-primary);font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif;line-height:1.7;}
+h1,h2{font-family:"Shippori Mincho",serif;font-weight:700;margin:0;text-wrap:balance;}
+.mono{font-family:"IBM Plex Mono",monospace;}
+.wrap{max-width:1040px;margin:0 auto;padding:0 24px;}
+
+header.top{padding:44px 24px 28px;border-bottom:1px solid var(--border);}
+header.top h1{font-size:clamp(24px,3.4vw,32px);margin-bottom:10px;}
+header.top .sub{color:var(--ink-secondary);font-size:14.5px;max-width:640px;}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:18px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-muted);}
+.meta-row .dot{color:var(--series-1);}
+
+section.term-block{padding:36px 24px;border-bottom:1px solid var(--border);}
+section.term-block .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;color:var(--ink-muted);text-transform:uppercase;margin-bottom:8px;}
+section.term-block h2{font-size:clamp(19px,2.6vw,23px);margin-bottom:20px;}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;}
+
+.chart-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:14px;padding:20px 20px 14px;box-shadow:var(--shadow-card);}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:2px;}
+.chart-head .name{font-weight:700;font-size:14.5px;}
+.chart-head .fredid{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-muted);}
+.chart-stat{display:flex;align-items:baseline;gap:8px;margin:4px 0 10px;}
+.chart-stat .val{font-family:"Zen Kaku Gothic New",sans-serif;font-weight:900;font-size:26px;}
+.chart-stat .unit{font-size:13px;color:var(--ink-muted);}
+.chart-stat .asof{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-muted);margin-left:auto;}
+.chart-mount svg{display:block;width:100%;height:auto;}
+.empty-note{font-size:12.5px;color:var(--ink-muted);padding:18px 0;}
+
+details.data-table{margin-top:10px;}
+details.data-table summary{cursor:pointer;font-size:12.5px;color:var(--series-1);font-weight:600;list-style:none;display:inline-flex;align-items:center;gap:4px;}
+details.data-table summary::-webkit-details-marker{display:none;}
+details.data-table summary::before{content:"▸";display:inline-block;transition:transform .15s;}
+details.data-table[open] summary::before{transform:rotate(90deg);}
+.table-scroll{overflow-x:auto;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;max-height:220px;overflow-y:auto;}
+table{border-collapse:collapse;width:100%;font-size:12px;}
+table th,table td{padding:5px 9px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",monospace;}
+table th:first-child,table td:first-child{text-align:left;font-family:"Zen Kaku Gothic New",sans-serif;}
+table th{color:var(--ink-muted);font-weight:600;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-surface);}
+table td{color:var(--ink-secondary);}
+table tr:not(:last-child) td{border-bottom:1px solid var(--gridline);}
+
+footer{padding:32px 24px 56px;}
+footer p{font-size:12px;color:var(--ink-muted);max-width:680px;margin:0 0 6px;}
+footer a{color:var(--series-1);}
+
+#tooltip{position:fixed;pointer-events:none;z-index:50;background:var(--ink-primary);color:var(--bg-surface);font-family:"IBM Plex Mono",monospace;font-size:11.5px;padding:7px 10px;border-radius:7px;box-shadow:0 8px 20px rgba(0,0,0,0.25);opacity:0;transform:translate(-50%,-130%);transition:opacity .1s;white-space:nowrap;}
+#tooltip.show{opacity:1;}
+#tooltip .tt-date{opacity:.6;font-size:10.5px;margin-bottom:3px;}
+
+.banner{margin:0 24px;padding:14px 18px;border-radius:10px;background:var(--critical-soft);border:1px solid var(--critical);font-size:13px;color:var(--ink-primary);display:none;}
+.banner.show{display:block;}
+
+@media (max-width:600px){ header.top,section.term-block{padding-left:20px;padding-right:20px;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>日本経済モニター</h1>
+    <p class="sub">FRED(セントルイス連邦準備銀行)が公開する統計データを毎日自動取得し、短期・中期・長期の視点で日本経済の主要指標を追跡するダッシュボード。</p>
+    <div class="meta-row">
+      <span><span class="dot">●</span> 最終更新: <span id="updated-at">読み込み中…</span></span>
+      <span>データ元: <a href="https://fred.stlouisfed.org/" style="color:inherit">FRED API</a></span>
+    </div>
+  </div>
+</header>
+
+<div class="banner" id="error-banner"></div>
+
+<section class="term-block" id="term-short">
+  <div class="wrap">
+    <div class="eyebrow">短期 / Short-term</div>
+    <h2>金融政策・為替 — 日々〜月次で動く指標</h2>
+    <div class="chart-grid" id="grid-short"></div>
+  </div>
+</section>
+
+<section class="term-block" id="term-medium">
+  <div class="wrap">
+    <div class="eyebrow">中期 / Medium-term</div>
+    <h2>成長率・物価 — 四半期〜年次のトレンド</h2>
+    <div class="chart-grid" id="grid-medium"></div>
+  </div>
+</section>
+
+<section class="term-block" id="term-long">
+  <div class="wrap">
+    <div class="eyebrow">長期 / Long-term</div>
+    <h2>人口・財政 — 構造的な変化</h2>
+    <div class="chart-grid" id="grid-long"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>本ページはFRED (Federal Reserve Bank of St. Louis) が提供する公開APIから取得した実測値のみを表示しています。予測・見通しは含みません。指標によって原資料の改定・遡及修正が入る場合があります。</p>
+    <p>更新は GitHub Actions によるスケジュール実行(1日1回)。ソース: <a href="https://github.com/">GitHub リポジトリ</a></p>
+  </div>
+</footer>
+
+<div id="tooltip"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function ns(tag){ return document.createElementNS("http://www.w3.org/2000/svg", tag); }
+  function fmt(n, opts){ return new Intl.NumberFormat("ja-JP", opts || {}).format(n); }
+
+  const tooltip = document.getElementById("tooltip");
+  function showTooltip(x, y, dateLabel, valueLabel){
+    tooltip.innerHTML = '<div class="tt-date">' + dateLabel + '</div><div>' + valueLabel + '</div>';
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+    tooltip.classList.add("show");
+  }
+  function hideTooltip(){ tooltip.classList.remove("show"); }
+
+  const W = 560, H = 200, PAD_L = 46, PAD_R = 12, PAD_T = 14, PAD_B = 22;
+
+  function niceTicks(min, max, count){
+    if (min === max){ min -= 1; max += 1; }
+    const range = max - min;
+    const step = Math.pow(10, Math.floor(Math.log10(range / count)));
+    const err = (count * step) / range;
+    let niceStep;
+    if (err <= 0.15) niceStep = step * 10;
+    else if (err <= 0.35) niceStep = step * 5;
+    else if (err <= 0.75) niceStep = step * 2;
+    else niceStep = step;
+    const niceMin = Math.floor(min / niceStep) * niceStep;
+    const niceMax = Math.ceil(max / niceStep) * niceStep;
+    const ticks = [];
+    for (let v = niceMin; v <= niceMax + niceStep * 0.5; v += niceStep) ticks.push(v);
+    return { ticks, min: niceMin, max: niceMax };
+  }
+
+  function shortDate(d){
+    const parts = d.split("-");
+    if (parts[2] === "01" && parts[1] !== "01") return parts[0] + "/" + parts[1];
+    if (parts[1] === "01" && parts[2] === "01") return parts[0];
+    return parts[0] + "/" + parts[1] + "/" + parts[2];
+  }
+
+  function renderChart(mount, series){
+    const pts = series.points;
+    if (!pts || pts.length === 0){
+      mount.innerHTML = '<div class="empty-note">データがまだありません。</div>';
+      return;
+    }
+    const values = pts.map(p => p.value);
+    const { ticks, min, max } = niceTicks(Math.min(...values), Math.max(...values), 4);
+    const n = pts.length;
+    const x0 = PAD_L, x1 = W - PAD_R, y0 = H - PAD_B, y1 = PAD_T;
+
+    function scaleX(i){ return n === 1 ? (x0 + x1) / 2 : x0 + (i / (n - 1)) * (x1 - x0); }
+    function scaleY(v){ return y0 + ((v - min) / (max - min || 1)) * (y1 - y0); }
+
+    const svg = ns("svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", series.label);
+
+    const gridline = cssVar("--gridline"), muted = cssVar("--ink-muted"), surface = cssVar("--bg-surface");
+    const color = cssVar("--series-1");
+
+    ticks.forEach(t => {
+      const y = scaleY(t);
+      const line = ns("line");
+      line.setAttribute("x1", x0); line.setAttribute("x2", x1);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", gridline); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      const label = ns("text");
+      label.setAttribute("x", x0 - 8); label.setAttribute("y", y + 4);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "10.5");
+      label.setAttribute("fill", muted); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = fmt(Math.round(t * 100) / 100);
+      svg.appendChild(label);
+    });
+
+    const d = pts.map((p, i) => (i === 0 ? "M" : "L") + scaleX(i).toFixed(2) + "," + scaleY(p.value).toFixed(2)).join(" ");
+    const path = ns("path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", color);
+    path.setAttribute("stroke-width", "2");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("stroke-linecap", "round");
+    svg.appendChild(path);
+
+    const lastX = scaleX(n - 1), lastY = scaleY(pts[n - 1].value);
+    const ring = ns("circle");
+    ring.setAttribute("cx", lastX); ring.setAttribute("cy", lastY); ring.setAttribute("r", "6");
+    ring.setAttribute("fill", surface);
+    svg.appendChild(ring);
+    const dot = ns("circle");
+    dot.setAttribute("cx", lastX); dot.setAttribute("cy", lastY); dot.setAttribute("r", "4");
+    dot.setAttribute("fill", color);
+    svg.appendChild(dot);
+
+    [0, n - 1].forEach(i => {
+      const label = ns("text");
+      label.setAttribute("x", scaleX(i)); label.setAttribute("y", H - 4);
+      label.setAttribute("text-anchor", i === 0 ? "start" : "end");
+      label.setAttribute("font-size", "10.5"); label.setAttribute("fill", muted);
+      label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = shortDate(pts[i].date);
+      svg.appendChild(label);
+    });
+
+    const hit = ns("rect");
+    hit.setAttribute("x", x0); hit.setAttribute("y", y1); hit.setAttribute("width", x1 - x0); hit.setAttribute("height", y0 - y1);
+    hit.setAttribute("fill", "transparent");
+    hit.addEventListener("mousemove", (e) => {
+      const rect = svg.getBoundingClientRect();
+      const px = ((e.clientX - rect.left) / rect.width) * W;
+      let idx = 0, best = Infinity;
+      for (let i = 0; i < n; i++){
+        const dist = Math.abs(scaleX(i) - px);
+        if (dist < best){ best = dist; idx = i; }
+      }
+      const p = pts[idx];
+      showTooltip(e.clientX, e.clientY, p.date, fmt(p.value, { maximumFractionDigits: 2 }) + " " + series.unit);
+    });
+    hit.addEventListener("mouseleave", hideTooltip);
+    svg.appendChild(hit);
+
+    mount.innerHTML = "";
+    mount.appendChild(svg);
+  }
+
+  function renderCard(series){
+    const card = document.createElement("div");
+    card.className = "chart-card";
+
+    const last = series.points && series.points.length ? series.points[series.points.length - 1] : null;
+
+    card.innerHTML =
+      '<div class="chart-head"><div class="name">' + series.label + '</div>' +
+      '<div class="fredid mono">' + series.fredId + '</div></div>' +
+      '<div class="chart-stat">' +
+        '<span class="val">' + (last ? fmt(last.value, { maximumFractionDigits: 2 }) : "—") + '</span>' +
+        '<span class="unit">' + series.unit + '</span>' +
+        '<span class="asof">' + (last ? last.date : "") + " 時点" + '</span>' +
+      '</div>' +
+      '<div class="chart-mount"></div>';
+
+    renderChart(card.querySelector(".chart-mount"), series);
+
+    if (series.points && series.points.length){
+      const details = document.createElement("details");
+      details.className = "data-table";
+      details.innerHTML = '<summary>データを表で見る</summary><div class="table-scroll"><table><thead><tr><th>日付</th><th>値</th></tr></thead><tbody>' +
+        series.points.slice().reverse().map(p => "<tr><td>" + p.date + "</td><td>" + fmt(p.value, { maximumFractionDigits: 3 }) + "</td></tr>").join("") +
+        "</tbody></table></div>";
+      card.appendChild(details);
+    }
+
+    return card;
+  }
+
+  async function main(){
+    const banner = document.getElementById("error-banner");
+    try {
+      const res = await fetch("./data/latest.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      document.getElementById("updated-at").textContent = data.updatedAt
+        ? new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeStyle: "short" }).format(new Date(data.updatedAt))
+        : "未取得(初回のワークフロー実行待ち)";
+
+      const grids = { short: document.getElementById("grid-short"), medium: document.getElementById("grid-medium"), long: document.getElementById("grid-long") };
+      (data.series || []).forEach(s => {
+        const grid = grids[s.term];
+        if (grid) grid.appendChild(renderCard(s));
+      });
+
+      ["short", "medium", "long"].forEach(term => {
+        if (!grids[term].children.length){
+          grids[term].innerHTML = '<div class="empty-note">この区分のデータはまだありません。</div>';
+        }
+      });
+    } catch (err) {
+      banner.textContent = "データの読み込みに失敗しました(" + err.message + ")。GitHub Actions がまだ一度も実行されていないか、docs/data/latest.json が存在しない可能性があります。";
+      banner.classList.add("show");
+      document.getElementById("updated-at").textContent = "未取得";
+    }
+  }
+
+  main();
+})();
+</script>
+</body>
+</html>
