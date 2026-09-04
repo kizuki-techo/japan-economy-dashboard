@@ -85,6 +85,8 @@ section.term-block h2{font-size:clamp(19px,2.6vw,23px);margin-bottom:20px;}
 .legend .item{display:flex;align-items:center;gap:6px;}
 .legend .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;}
 .section-note{color:var(--ink-secondary);font-size:14px;max-width:660px;margin:0 0 20px;}
+.reminder-chip{display:inline-block;background:var(--bg-surface-2);border:1px solid var(--border);border-left:3px solid var(--series-1);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--ink-secondary);max-width:660px;margin:-8px 0 20px;}
+.reminder-chip strong{color:var(--ink-primary);font-weight:700;}
 
 .commentary-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:16px;padding:26px 26px 22px;box-shadow:var(--shadow-card);}
 .commentary-card h3{font-family:"Shippori Mincho",serif;font-size:16.5px;font-weight:700;margin:0 0 12px;}
@@ -178,6 +180,7 @@ footer a{color:var(--series-1);}
     <div class="eyebrow">国際収支 / Balance of Payments</div>
     <h2>「仮面の黒字国」— 黒字なのに円安が続く理由</h2>
     <p class="section-note">唐鎌大輔『弱い円の正体 仮面の黒字国・日本』(日経BP, 2024)の分析視点を反映した参考データ。財務省・日本銀行「国際収支統計」の年次値(2025年分まで)。上のFREDセクションと違い自動取得ではなく、新しい年次統計が公表され次第、手動で更新します。</p>
+    <p class="reminder-chip">備忘: 財務省の年次データは<strong>2月頃(速報)</strong>と<strong>4月頃(確報・改定)</strong>に更新される。その時期にClaudeへ「国際収支の年次データ、最新に更新して」と依頼する。</p>
     <div class="chart-grid">
       <div class="chart-card"><div id="bop-catb"></div></div>
       <div class="chart-card"><div id="bop-ratediff"></div></div>
