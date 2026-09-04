@@ -190,6 +190,17 @@ footer a{color:var(--series-1);}
   </div>
 </section>
 
+<section class="term-block" id="term-structure">
+  <div class="wrap">
+    <div class="eyebrow">構造 / Productivity &amp; Distribution</div>
+    <h2>生産性は伸びても、賃金に届かない</h2>
+    <p class="section-note">河野龍太郎氏(BNPパリバ証券チーフエコノミスト)『日本経済の死角 収奪的システムを解き明かす』(ちくま新書, 2025)の分析視点を反映した参考データ。1998〜2023年の累計伸び率(概数)。原著の記述に基づく概算値であり、OECDの精密な指数値そのものではありません。</p>
+    <div class="chart-grid">
+      <div class="chart-card"><div id="structure-productivity"></div></div>
+    </div>
+  </div>
+</section>
+
 <section class="term-block" id="term-commentary">
   <div class="wrap">
     <div class="eyebrow">解説 / Commentary</div>
@@ -720,6 +731,101 @@ footer a{color:var(--series-1);}
     renderBopTable(card, ["年", title], points.map(p => [p.y, fmt(p.value, { maximumFractionDigits: 3 })]));
   }
 
+  // ============================================================
+  // 構造セクション — 河野龍太郎氏『日本経済の死角』の視点
+  // 1998→2023の労働生産性・実質賃金の累計伸び率(概数)。
+  // 出典: 河野龍太郎『日本経済の死角 収奪的システムを解き明かす』(ちくま新書, 2025)
+  // webちくま掲載の抜粋記事に基づく概算値(著者自身が概数として述べている数値であり、
+  // OECD統計の精密な指数値そのものではない)。
+  // ============================================================
+  const STRUCTURE_CATEGORIES = ["日本", "米国", "ドイツ", "フランス"];
+  const STRUCTURE_SERIES = [
+    { label: "労働生産性(時間当たり)", color: "--series-1", values: [30, 50, 25, 20] },
+    { label: "実質賃金(時間当たり)", color: "--series-2", values: [-3, 25, 15, 20] }
+  ];
+
+  function renderGroupedBar(mount, title, categories, seriesList, unit){
+    const card = mount;
+    const head = document.createElement("div");
+    head.className = "chart-head";
+    head.innerHTML = '<div class="name">' + title + '</div>';
+    card.appendChild(head);
+    renderBopLegend(card, seriesList.map(s => ({ color: cssVar(s.color), label: s.label })));
+
+    const W = 480, H = 240, PAD_L = 46, PAD_R = 14, PAD_T = 14, PAD_B = 26;
+    const allVals = seriesList.flatMap(s => s.values).concat([0]);
+    const { ticks, min, max } = niceTicks(Math.min(...allVals), Math.max(...allVals), 4);
+    const x0 = PAD_L, x1 = W - PAD_R, y0 = H - PAD_B, y1 = PAD_T;
+    const n = categories.length, m = seriesList.length;
+    const bandW = (x1 - x0) / n;
+    const barW = Math.min(30, (bandW * 0.7) / m);
+    const groupW = barW * m;
+    function scaleY(v){ return y0 + ((v - min) / (max - min || 1)) * (y1 - y0); }
+    function groupStart(i){ return x0 + bandW * i + (bandW - groupW) / 2; }
+
+    const svg = svgShell(W, H);
+    const gridline = cssVar("--gridline"), axisLabel = cssVar("--ink-secondary"), baseline = cssVar("--baseline");
+
+    ticks.forEach(t => {
+      const y = scaleY(t);
+      const line = ns("line");
+      line.setAttribute("x1", x0); line.setAttribute("x2", x1);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", t === 0 ? baseline : gridline); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      const label = ns("text");
+      label.setAttribute("x", x0 - 8); label.setAttribute("y", y + 4);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "12.5");
+      label.setAttribute("fill", axisLabel); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = fmt(t) + "%";
+      svg.appendChild(label);
+    });
+
+    categories.forEach((cat, i) => {
+      seriesList.forEach((s, k) => {
+        const v = s.values[i];
+        const top = Math.min(scaleY(0), scaleY(v));
+        const bottom = Math.max(scaleY(0), scaleY(v));
+        const rect = ns("rect");
+        rect.setAttribute("x", (groupStart(i) + barW * k).toFixed(2));
+        rect.setAttribute("y", top.toFixed(2));
+        rect.setAttribute("width", Math.max(0, barW - 3).toFixed(2));
+        rect.setAttribute("height", Math.max(0, bottom - top).toFixed(2));
+        rect.setAttribute("fill", cssVar(s.color));
+        svg.appendChild(rect);
+      });
+      const label = ns("text");
+      label.setAttribute("x", x0 + bandW * (i + 0.5)); label.setAttribute("y", H - 4);
+      label.setAttribute("text-anchor", "middle"); label.setAttribute("font-size", "12.5");
+      label.setAttribute("fill", axisLabel); label.setAttribute("font-family", "Zen Kaku Gothic New, sans-serif");
+      label.textContent = cat;
+      svg.appendChild(label);
+    });
+
+    const mountDiv = document.createElement("div");
+    mountDiv.className = "chart-mount";
+    mountDiv.appendChild(svg);
+    card.appendChild(mountDiv);
+    const note = document.createElement("div");
+    note.className = "caption-note";
+    note.textContent = "単位: " + unit + " ・ 出典: 河野龍太郎『日本経済の死角』(ちくま新書, 2025)の記述に基づく概数";
+    card.appendChild(note);
+
+    renderBopTable(
+      card,
+      ["国"].concat(seriesList.map(s => s.label)),
+      categories.map((cat, i) => [cat].concat(seriesList.map(s => (s.values[i] >= 0 ? "+" : "") + s.values[i] + "%")))
+    );
+  }
+
+  function renderStructureSection(){
+    renderGroupedBar(
+      document.getElementById("structure-productivity"),
+      "労働生産性・実質賃金の伸び(1998→2023, 累計)",
+      STRUCTURE_CATEGORIES, STRUCTURE_SERIES, "%(累計伸び率)"
+    );
+  }
+
   function renderBopSection(){
     renderBopMultiLine(
       document.getElementById("bop-catb"),
@@ -837,6 +943,7 @@ footer a{color:var(--series-1);}
 
   main();
   renderBopSection();
+  renderStructureSection();
   renderCommentary();
 })();
 </script>
