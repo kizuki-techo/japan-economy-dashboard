@@ -209,6 +209,7 @@ footer a{color:var(--series-1);}
     svg.setAttribute("aria-label", series.label);
 
     const gridline = cssVar("--gridline"), muted = cssVar("--ink-muted"), surface = cssVar("--bg-surface");
+    const axisLabel = cssVar("--ink-secondary");
     const color = cssVar("--series-1");
 
     ticks.forEach(t => {
@@ -221,7 +222,7 @@ footer a{color:var(--series-1);}
       const label = ns("text");
       label.setAttribute("x", x0 - 8); label.setAttribute("y", y + 4);
       label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "13");
-      label.setAttribute("fill", muted); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.setAttribute("fill", axisLabel); label.setAttribute("font-family", "IBM Plex Mono, monospace");
       label.textContent = fmt(Math.round(t * 100) / 100);
       svg.appendChild(label);
     });
@@ -250,7 +251,7 @@ footer a{color:var(--series-1);}
       const label = ns("text");
       label.setAttribute("x", scaleX(i)); label.setAttribute("y", H - 4);
       label.setAttribute("text-anchor", i === 0 ? "start" : "end");
-      label.setAttribute("font-size", "13"); label.setAttribute("fill", muted);
+      label.setAttribute("font-size", "13"); label.setAttribute("fill", axisLabel);
       label.setAttribute("font-family", "IBM Plex Mono, monospace");
       label.textContent = shortDate(pts[i].date);
       svg.appendChild(label);
