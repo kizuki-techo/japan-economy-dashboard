@@ -163,7 +163,7 @@ footer a{color:var(--series-1);}
   }
   function hideTooltip(){ tooltip.classList.remove("show"); }
 
-  const W = 560, H = 200, PAD_L = 46, PAD_R = 12, PAD_T = 14, PAD_B = 22;
+  const W = 560, H = 200, PAD_L = 56, PAD_R = 14, PAD_T = 14, PAD_B = 26;
 
   function niceTicks(min, max, count){
     if (min === max){ min -= 1; max += 1; }
@@ -220,7 +220,7 @@ footer a{color:var(--series-1);}
       svg.appendChild(line);
       const label = ns("text");
       label.setAttribute("x", x0 - 8); label.setAttribute("y", y + 4);
-      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "10.5");
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "13");
       label.setAttribute("fill", muted); label.setAttribute("font-family", "IBM Plex Mono, monospace");
       label.textContent = fmt(Math.round(t * 100) / 100);
       svg.appendChild(label);
@@ -250,7 +250,7 @@ footer a{color:var(--series-1);}
       const label = ns("text");
       label.setAttribute("x", scaleX(i)); label.setAttribute("y", H - 4);
       label.setAttribute("text-anchor", i === 0 ? "start" : "end");
-      label.setAttribute("font-size", "10.5"); label.setAttribute("fill", muted);
+      label.setAttribute("font-size", "13"); label.setAttribute("fill", muted);
       label.setAttribute("font-family", "IBM Plex Mono, monospace");
       label.textContent = shortDate(pts[i].date);
       svg.appendChild(label);
