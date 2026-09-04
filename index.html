@@ -25,6 +25,8 @@
   --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a; --cat-4:#eda100; --cat-5:#e87ba4;
   --critical:#d03b3b;
   --critical-soft:#f7e2e1;
+  --good:#0ca30c;
+  --good-soft:#e3f3e0;
   --shadow-card:0 1px 2px rgba(20,22,28,0.05),0 10px 28px -16px rgba(20,22,28,0.22);
 }
 @media (prefers-color-scheme: dark){
@@ -36,6 +38,7 @@
     --series-2:#b8863a;
     --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
     --critical:#e2645c; --critical-soft:#3a2222;
+    --good:#3fbf5f; --good-soft:#1e3320;
     --shadow-card:0 1px 2px rgba(0,0,0,0.35),0 10px 28px -16px rgba(0,0,0,0.6);
   }
 }
@@ -47,6 +50,7 @@
   --series-2:#b8863a;
   --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
   --critical:#e2645c; --critical-soft:#3a2222;
+  --good:#3fbf5f; --good-soft:#1e3320;
   --shadow-card:0 1px 2px rgba(0,0,0,0.35),0 10px 28px -16px rgba(0,0,0,0.6);
 }
 *{box-sizing:border-box;}
@@ -81,6 +85,27 @@ section.term-block h2{font-size:clamp(19px,2.6vw,23px);margin-bottom:20px;}
 .legend .item{display:flex;align-items:center;gap:6px;}
 .legend .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;}
 .section-note{color:var(--ink-secondary);font-size:14px;max-width:660px;margin:0 0 20px;}
+
+.commentary-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:16px;padding:26px 26px 22px;box-shadow:var(--shadow-card);}
+.commentary-card h3{font-family:"Shippori Mincho",serif;font-size:16.5px;font-weight:700;margin:0 0 12px;}
+.commentary-card h3:not(:first-child){margin-top:28px;}
+.commentary-card p{margin:0 0 10px;font-size:14px;color:var(--ink-secondary);}
+.reading-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
+.reading-item{background:var(--bg-surface-2);border-radius:10px;padding:12px 14px;}
+.reading-item .rt{font-weight:700;font-size:13.5px;margin-bottom:4px;}
+.reading-item .rd{font-size:12.5px;color:var(--ink-secondary);}
+.term-tag{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--ink-muted);text-transform:uppercase;margin:20px 0 10px;}
+.term-tag:first-of-type{margin-top:4px;}
+.pm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:6px;}
+.pm-col .pm-head{display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;margin-bottom:10px;}
+.pm-col ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;}
+.pm-col li{display:flex;gap:8px;font-size:13.5px;color:var(--ink-secondary);align-items:flex-start;}
+.pm-icon{flex:none;width:16px;height:16px;margin-top:1px;}
+.outlook-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:6px;}
+.outlook-col{background:var(--bg-surface-2);border-radius:10px;padding:14px 16px;}
+.outlook-col .ot{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--series-1);text-transform:uppercase;margin-bottom:8px;}
+.outlook-col p{font-size:13px;margin:0;}
+.commentary-updated{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-muted);margin-top:20px;}
 
 details.data-table{margin-top:10px;}
 details.data-table summary{cursor:pointer;font-size:12.5px;color:var(--series-1);font-weight:600;list-style:none;display:inline-flex;align-items:center;gap:4px;}
@@ -158,6 +183,16 @@ footer a{color:var(--series-1);}
       <div class="chart-card"><div id="bop-ratediff"></div></div>
       <div class="chart-card"><div id="bop-five"></div></div>
       <div class="chart-card"><div id="bop-fdi"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="term-block" id="term-commentary">
+  <div class="wrap">
+    <div class="eyebrow">解説 / Commentary</div>
+    <h2>読み取りポイントと今後の見通し</h2>
+    <div class="commentary-card" id="commentary-mount">
+      <p class="empty-note">解説を読み込み中…</p>
     </div>
   </div>
 </section>
@@ -711,6 +746,62 @@ footer a{color:var(--series-1);}
     );
   }
 
+  const TERM_LABEL = { short: "短期", medium: "中期", long: "長期", bop: "国際収支" };
+  const ICON_GOOD = '<svg class="pm-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.4"/><path d="M4.8 8.2l2 2 4.4-4.6" stroke="var(--good)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_CRITICAL = '<svg class="pm-icon" viewBox="0 0 16 16" fill="none"><path d="M8 2.2 14.5 13.4H1.5Z" fill="var(--critical-soft)" stroke="var(--critical)" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.4v3.4" stroke="var(--critical)" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.6" r="0.9" fill="var(--critical)"/></svg>';
+
+  async function renderCommentary(){
+    const mount = document.getElementById("commentary-mount");
+    try {
+      const res = await fetch("./data/commentary.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const c = await res.json();
+
+      let html = "";
+
+      html += "<h3>各グラフの読み取りポイント</h3>";
+      ["short", "medium", "long", "bop"].forEach(term => {
+        const items = (c.readingPoints && c.readingPoints[term]) || [];
+        if (!items.length) return;
+        html += '<div class="term-tag">' + TERM_LABEL[term] + '</div><div class="reading-grid">';
+        html += items.map(it =>
+          '<div class="reading-item"><div class="rt">' + it.title + '</div><div class="rd">' + it.text + '</div></div>'
+        ).join("");
+        html += "</div>";
+      });
+
+      if (c.overall){
+        html += "<h3>全体評価</h3><p>" + c.overall + "</p>";
+      }
+
+      if ((c.plus && c.plus.length) || (c.minus && c.minus.length)){
+        html += "<h3>プラス面・マイナス面</h3><div class=\"pm-grid\">";
+        html += '<div class="pm-col"><div class="pm-head">' + ICON_GOOD + '<span>プラス材料</span></div><ul>' +
+          (c.plus || []).map(t => "<li>" + t + "</li>").join("") + "</ul></div>";
+        html += '<div class="pm-col"><div class="pm-head">' + ICON_CRITICAL + '<span>マイナス材料</span></div><ul>' +
+          (c.minus || []).map(t => "<li>" + t + "</li>").join("") + "</ul></div>";
+        html += "</div>";
+      }
+
+      if (c.outlook){
+        html += "<h3>今後の展開予想</h3><div class=\"outlook-grid\">";
+        ["short", "medium", "long"].forEach(term => {
+          if (!c.outlook[term]) return;
+          html += '<div class="outlook-col"><div class="ot">' + TERM_LABEL[term] + '</div><p>' + c.outlook[term] + "</p></div>";
+        });
+        html += "</div>";
+      }
+
+      if (c.updatedAt){
+        html += '<div class="commentary-updated">最終更新: ' + c.updatedAt + '(手動更新)</div>';
+      }
+
+      mount.innerHTML = html;
+    } catch (err) {
+      mount.innerHTML = '<p class="empty-note">解説の読み込みに失敗しました(' + err.message + ')。data/commentary.json が存在しない可能性があります。</p>';
+    }
+  }
+
   async function main(){
     const banner = document.getElementById("error-banner");
     try {
@@ -742,6 +833,7 @@ footer a{color:var(--series-1);}
 
   main();
   renderBopSection();
+  renderCommentary();
 })();
 </script>
 </body>
