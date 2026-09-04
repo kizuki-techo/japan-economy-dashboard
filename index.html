@@ -21,6 +21,8 @@
   --border:rgba(20,22,28,0.10);
   --series-1:#2e5aa0;
   --series-1-wash:rgba(46,90,160,0.10);
+  --series-2:#b8923a;
+  --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a; --cat-4:#eda100; --cat-5:#e87ba4;
   --critical:#d03b3b;
   --critical-soft:#f7e2e1;
   --shadow-card:0 1px 2px rgba(20,22,28,0.05),0 10px 28px -16px rgba(20,22,28,0.22);
@@ -31,6 +33,8 @@
     --ink-primary:#f2f3f6; --ink-secondary:#c3c8d6; --ink-muted:#8991a3;
     --gridline:#262a33; --baseline:#383c48; --border:rgba(255,255,255,0.10);
     --series-1:#6e93d1; --series-1-wash:rgba(110,147,209,0.14);
+    --series-2:#b8863a;
+    --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
     --critical:#e2645c; --critical-soft:#3a2222;
     --shadow-card:0 1px 2px rgba(0,0,0,0.35),0 10px 28px -16px rgba(0,0,0,0.6);
   }
@@ -40,6 +44,8 @@
   --ink-primary:#f2f3f6; --ink-secondary:#c3c8d6; --ink-muted:#8991a3;
   --gridline:#262a33; --baseline:#383c48; --border:rgba(255,255,255,0.10);
   --series-1:#6e93d1; --series-1-wash:rgba(110,147,209,0.14);
+  --series-2:#b8863a;
+  --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500; --cat-5:#d55181;
   --critical:#e2645c; --critical-soft:#3a2222;
   --shadow-card:0 1px 2px rgba(0,0,0,0.35),0 10px 28px -16px rgba(0,0,0,0.6);
 }
@@ -70,6 +76,11 @@ section.term-block h2{font-size:clamp(19px,2.6vw,23px);margin-bottom:20px;}
 .chart-stat .asof{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-muted);margin-left:auto;}
 .chart-mount svg{display:block;width:100%;height:auto;}
 .empty-note{font-size:12.5px;color:var(--ink-muted);padding:18px 0;}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-secondary);margin-bottom:8px;}
+.legend .item{display:flex;align-items:center;gap:6px;}
+.legend .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;}
+.section-note{color:var(--ink-secondary);font-size:14px;max-width:660px;margin:0 0 20px;}
 
 details.data-table{margin-top:10px;}
 details.data-table summary{cursor:pointer;font-size:12.5px;color:var(--series-1);font-weight:600;list-style:none;display:inline-flex;align-items:center;gap:4px;}
@@ -137,9 +148,24 @@ footer a{color:var(--series-1);}
   </div>
 </section>
 
+<section class="term-block" id="term-bop">
+  <div class="wrap">
+    <div class="eyebrow">国際収支 / Balance of Payments</div>
+    <h2>「仮面の黒字国」— 黒字なのに円安が続く理由</h2>
+    <p class="section-note">唐鎌大輔『弱い円の正体 仮面の黒字国・日本』(日経BP, 2024)の分析視点を反映した参考データ。財務省・日本銀行「国際収支統計」の年次値(2025年分まで)。上のFREDセクションと違い自動取得ではなく、新しい年次統計が公表され次第、手動で更新します。</p>
+    <div class="chart-grid">
+      <div class="chart-card"><div id="bop-catb"></div></div>
+      <div class="chart-card"><div id="bop-ratediff"></div></div>
+      <div class="chart-card"><div id="bop-five"></div></div>
+      <div class="chart-card"><div id="bop-fdi"></div></div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <p>本ページはFRED (Federal Reserve Bank of St. Louis) が提供する公開APIから取得した実測値のみを表示しています。予測・見通しは含みません。指標によって原資料の改定・遡及修正が入る場合があります。</p>
+    <p>「国際収支」セクションのみ財務省・日本銀行の年次統計に基づく手動更新データです。</p>
     <p>更新は GitHub Actions によるスケジュール実行(1日1回)。ソース: <a href="https://github.com/">GitHub リポジトリ</a></p>
   </div>
 </footer>
@@ -308,6 +334,383 @@ footer a{color:var(--series-1);}
     return card;
   }
 
+  // ============================================================
+  // 国際収支セクション — 財務省・日本銀行「国際収支統計」年次値
+  // 唐鎌大輔『弱い円の正体 仮面の黒字国・日本』の分析視点を反映した静的な参考データ。
+  // FREDセクションと異なり自動取得ではなく、年次統計の公表にあわせて手動更新する。
+  // ============================================================
+
+  // 経常収支(ca, 億ドル)・貿易収支(tb, 億ドル)・ドル円(fx) 1985-2025
+  const BOP_CATB_RAW = [
+    {y:1985,ca:50.18,tb:46.68,fx:238.5358},{y:1986,ca:84.52,tb:83.20,fx:168.5198},
+    {y:1987,ca:84.25,tb:80.25,fx:144.6375},{y:1988,ca:79.17,tb:77.48,fx:128.1517},
+    {y:1989,ca:63.14,tb:64.22,fx:137.9644},{y:1990,ca:44.71,tb:52.21,fx:144.7925},
+    {y:1991,ca:68.12,tb:77.79,fx:134.7067},{y:1992,ca:112.39,tb:106.65,fx:126.6513},
+    {y:1993,ca:131.92,tb:120.64,fx:111.1978},{y:1994,ca:130.54,tb:122.04,fx:102.2078},
+    {y:1995,ca:110.42,tb:107.23,fx:94.0596},{y:1996,ca:68.91,tb:61.77,fx:108.7791},
+    {y:1997,ca:95.12,tb:82.20,fx:120.9909},{y:1998,ca:115.14,tb:107.45,fx:130.9053},
+    {y:1999,ca:114.28,tb:109.36,fx:113.9068},{y:2000,ca:130.59,tb:99.79,fx:107.7655},
+    {y:2001,ca:86.19,tb:54.41,fx:121.5289},{y:2002,ca:109.15,tb:79.53,fx:125.3880},
+    {y:2003,ca:139.44,tb:88.89,fx:115.9335},{y:2004,ca:182.07,tb:111.13,fx:108.1926},
+    {y:2005,ca:170.09,tb:79.07,fx:110.2182},{y:2006,ca:174.48,tb:67.66,fx:116.2993},
+    {y:2007,ca:212.18,tb:92.08,fx:117.7535},{y:2008,ca:142.57,tb:18.88,fx:103.3595},
+    {y:2009,ca:145.21,tb:28.74,fx:93.5701},{y:2010,ca:221.06,tb:75.72,fx:87.7799},
+    {y:2011,ca:129.88,tb:-32.20,fx:79.8070},{y:2012,ca:59.68,tb:-87.28,fx:79.7905},
+    {y:2013,ca:45.95,tb:-117.73,fx:97.5957},{y:2014,ca:36.77,tb:-122.00,fx:105.9448},
+    {y:2015,ca:136.45,tb:-23.20,fx:121.0440},{y:2016,ca:197.78,tb:37.32,fx:108.7929},
+    {y:2017,ca:203.54,tb:26.23,fx:112.1661},{y:2018,ca:177.82,tb:-10.34,fx:110.4232},
+    {y:2019,ca:176.34,tb:-15.39,fx:109.0097},{y:2020,ca:149.94,tb:5.86,fx:106.7746},
+    {y:2021,ca:196.21,tb:-12.94,fx:109.7543},{y:2022,ca:89.91,tb:-150.34,fx:131.4981},
+    {y:2023,ca:156.25,tb:-68.54,fx:140.4911},{y:2024,ca:189.17,tb:-36.49,fx:151.3663},
+    {y:2025,ca:214.17,tb:-17.71,fx:149.6579}
+  ];
+  // 日米10年金利差(pp) 1986-2025
+  const BOP_RATE_RAW = [
+    {y:1986,us:7.682,jp:5.410},{y:1987,us:8.384,jp:5.002},{y:1988,us:8.846,jp:4.971},
+    {y:1989,us:8.498,jp:5.155},{y:1990,us:8.550,jp:6.872},{y:1991,us:7.858,jp:6.377},
+    {y:1992,us:7.010,jp:5.348},{y:1993,us:5.873,jp:4.346},{y:1994,us:7.080,jp:4.358},
+    {y:1995,us:6.580,jp:3.460},{y:1996,us:6.438,jp:3.118},{y:1997,us:6.352,jp:2.373},
+    {y:1998,us:5.264,jp:1.529},{y:1999,us:5.637,jp:1.743},{y:2000,us:6.029,jp:1.746},
+    {y:2001,us:5.018,jp:1.329},{y:2002,us:4.611,jp:1.270},{y:2003,us:4.015,jp:0.993},
+    {y:2004,us:4.274,jp:1.505},{y:2005,us:4.290,jp:1.385},{y:2006,us:4.792,jp:1.742},
+    {y:2007,us:4.629,jp:1.681},{y:2008,us:3.667,jp:1.493},{y:2009,us:3.257,jp:1.354},
+    {y:2010,us:3.214,jp:1.182},{y:2011,us:2.786,jp:1.124},{y:2012,us:1.802,jp:0.858},
+    {y:2013,us:2.351,jp:0.715},{y:2014,us:2.541,jp:0.553},{y:2015,us:2.136,jp:0.364},
+    {y:2016,us:1.842,jp:-0.050},{y:2017,us:2.330,jp:0.054},{y:2018,us:2.910,jp:0.076},
+    {y:2019,us:2.144,jp:-0.095},{y:2020,us:0.894,jp:0.011},{y:2021,us:1.442,jp:0.068},
+    {y:2022,us:2.952,jp:0.241},{y:2023,us:3.957,jp:0.571},{y:2024,us:4.208,jp:0.912},
+    {y:2025,us:4.292,jp:1.543}
+  ];
+  // サービス収支の5分類(兆円): モノ・ヒト・デジタル・カネ関連 + その他、うち6番目は合計
+  const BOP_FIVE_RAW = {
+    2014:[0.49,-0.82,-2.15,-0.16,-0.40,-3.03], 2015:[0.44,0.49,-2.65,0.13,-0.34,-1.93],
+    2016:[0.75,0.82,-2.67,0.22,-0.24,-1.13], 2017:[1.06,1.26,-2.56,-0.15,-0.30,-0.69],
+    2018:[-0.06,1.90,-2.79,-0.16,0.10,-1.02], 2019:[-0.06,2.19,-3.94,-0.02,0.74,-1.08],
+    2020:[-0.44,0.50,-3.83,-0.34,0.46,-3.66], 2021:[0.11,0.23,-4.37,-0.65,0.43,-4.25],
+    2022:[-0.59,0.58,-4.75,-1.11,0.32,-5.56], 2023:[0.76,3.58,-5.95,-1.74,0.01,-3.34],
+    2024:[0.04,6.02,-6.87,-2.53,0.14,-3.19], 2025:[-1.05,6.52,-6.73,-2.41,0.22,-3.44]
+  };
+  const BOP_FIVE_ORDER = [
+    { key: "mono", color: "--cat-1", label: "モノ関連" },
+    { key: "hito", color: "--cat-2", label: "ヒト関連(旅行等)" },
+    { key: "digital", color: "--cat-3", label: "デジタル関連" },
+    { key: "kane", color: "--cat-4", label: "カネ関連" },
+    { key: "other", color: "--cat-5", label: "その他" }
+  ];
+  // 対日直接投資フロー(兆円) 1996-2025
+  const BOP_FDI_RAW = [
+    {y:1996,v:-0.0031},{y:1997,v:0.3045},{y:1998,v:0.3169},{y:1999,v:1.7179},{y:2000,v:1.1616},
+    {y:2001,v:0.6010},{y:2002,v:1.4666},{y:2003,v:1.0296},{y:2004,v:0.8207},{y:2005,v:0.5502},
+    {y:2006,v:-0.2486},{y:2007,v:2.5947},{y:2008,v:2.5303},{y:2009,v:1.1478},{y:2010,v:0.6636},
+    {y:2011,v:-0.0693},{y:2012,v:0.0407},{y:2013,v:1.0501},{y:2014,v:2.0745},{y:2015,v:0.6272},
+    {y:2016,v:4.4915},{y:2017,v:2.1144},{y:2018,v:2.7949},{y:2019,v:4.3659},{y:2020,v:6.7015},
+    {y:2021,v:3.8140},{y:2022,v:6.3043},{y:2023,v:2.8898},{y:2024,v:2.9027},{y:2025,v:6.9171}
+  ];
+
+  function svgShell(W, H){
+    const svg = ns("svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    return svg;
+  }
+
+  function yearTicks(pts){
+    const first = pts[0].y, last = pts[pts.length - 1].y;
+    const mid = pts[Math.floor(pts.length / 2)].y;
+    return first === mid || last === mid ? [first, last] : [first, mid, last];
+  }
+
+  function renderBopLegend(mount, items){
+    const legend = document.createElement("div");
+    legend.className = "legend";
+    legend.innerHTML = items.map(it =>
+      '<span class="item"><span class="swatch" style="background:' + it.color + '"></span>' + it.label + '</span>'
+    ).join("");
+    mount.appendChild(legend);
+  }
+
+  function renderBopTable(card, headers, rows){
+    const details = document.createElement("details");
+    details.className = "data-table";
+    details.innerHTML = '<summary>データを表で見る</summary><div class="table-scroll"><table><thead><tr>' +
+      headers.map(h => "<th>" + h + "</th>").join("") +
+      '</tr></thead><tbody>' +
+      rows.slice().reverse().map(r => "<tr>" + r.map(c => "<td>" + c + "</td>").join("") + "</tr>").join("") +
+      "</tbody></table></div>";
+    card.appendChild(details);
+  }
+
+  // Multi-series line chart, x = integer year
+  function renderBopMultiLine(mount, title, seriesList, unit){
+    const card = mount;
+    const head = document.createElement("div");
+    head.className = "chart-head";
+    head.innerHTML = '<div class="name">' + title + '</div>';
+    card.appendChild(head);
+    if (seriesList.length > 1){
+      renderBopLegend(card, seriesList.map(s => ({ color: s.color, label: s.label })));
+    }
+
+    const W = 480, H = 220, PAD_L = 56, PAD_R = 14, PAD_T = 14, PAD_B = 26;
+    const allValues = seriesList.flatMap(s => s.points.map(p => p.value));
+    const { ticks, min, max } = niceTicks(Math.min(...allValues), Math.max(...allValues), 4);
+    const years = seriesList[0].points.map(p => p.y);
+    const minY = years[0], maxY = years[years.length - 1];
+    const x0 = PAD_L, x1 = W - PAD_R, y0 = H - PAD_B, y1 = PAD_T;
+    function scaleX(y){ return minY === maxY ? (x0 + x1) / 2 : x0 + ((y - minY) / (maxY - minY)) * (x1 - x0); }
+    function scaleY(v){ return y0 + ((v - min) / (max - min || 1)) * (y1 - y0); }
+
+    const svg = svgShell(W, H);
+    const gridline = cssVar("--gridline"), axisLabel = cssVar("--ink-secondary"), surface = cssVar("--bg-surface");
+
+    ticks.forEach(t => {
+      const y = scaleY(t);
+      const line = ns("line");
+      line.setAttribute("x1", x0); line.setAttribute("x2", x1);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", gridline); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      const label = ns("text");
+      label.setAttribute("x", x0 - 8); label.setAttribute("y", y + 4);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "12.5");
+      label.setAttribute("fill", axisLabel); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = fmt(Math.round(t * 10) / 10);
+      svg.appendChild(label);
+    });
+
+    seriesList.forEach(s => {
+      const color = cssVar(s.color);
+      const d = s.points.map((p, i) => (i === 0 ? "M" : "L") + scaleX(p.y).toFixed(2) + "," + scaleY(p.value).toFixed(2)).join(" ");
+      const path = ns("path");
+      path.setAttribute("d", d); path.setAttribute("fill", "none");
+      path.setAttribute("stroke", color); path.setAttribute("stroke-width", "2");
+      path.setAttribute("stroke-linejoin", "round"); path.setAttribute("stroke-linecap", "round");
+      svg.appendChild(path);
+      const last = s.points[s.points.length - 1];
+      const ring = ns("circle");
+      ring.setAttribute("cx", scaleX(last.y)); ring.setAttribute("cy", scaleY(last.value));
+      ring.setAttribute("r", "6"); ring.setAttribute("fill", surface);
+      svg.appendChild(ring);
+      const dot = ns("circle");
+      dot.setAttribute("cx", scaleX(last.y)); dot.setAttribute("cy", scaleY(last.value));
+      dot.setAttribute("r", "4"); dot.setAttribute("fill", color);
+      svg.appendChild(dot);
+    });
+
+    yearTicks(seriesList[0].points).forEach((yr, i, arr) => {
+      const label = ns("text");
+      label.setAttribute("x", scaleX(yr)); label.setAttribute("y", H - 4);
+      label.setAttribute("text-anchor", i === 0 ? "start" : (i === arr.length - 1 ? "end" : "middle"));
+      label.setAttribute("font-size", "12.5"); label.setAttribute("fill", axisLabel);
+      label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = yr;
+      svg.appendChild(label);
+    });
+
+    const mountDiv = document.createElement("div");
+    mountDiv.className = "chart-mount";
+    mountDiv.appendChild(svg);
+    card.appendChild(mountDiv);
+    const note = document.createElement("div");
+    note.className = "caption-note";
+    note.textContent = "単位: " + unit + " ・ 出典: 財務省・日本銀行「国際収支統計」(年次)";
+    card.appendChild(note);
+
+    renderBopTable(
+      card,
+      ["年"].concat(seriesList.map(s => s.label)),
+      seriesList[0].points.map((p, i) => [p.y].concat(seriesList.map(s => fmt(s.points[i].value, { maximumFractionDigits: 2 }))))
+    );
+  }
+
+  // Stacked bar (5 categories) + total line overlay
+  function renderBopStacked(mount, title, years, dataByYear, order, unit){
+    const card = mount;
+    const head = document.createElement("div");
+    head.className = "chart-head";
+    head.innerHTML = '<div class="name">' + title + '</div>';
+    card.appendChild(head);
+    renderBopLegend(card, order.map(o => ({ color: cssVar(o.color), label: o.label })).concat([{ color: cssVar("--ink-primary"), label: "合計(線)" }]));
+
+    const W = 480, H = 240, PAD_L = 50, PAD_R = 14, PAD_T = 14, PAD_B = 26;
+    const totals = years.map(y => dataByYear[y][5]);
+    const allVals = years.flatMap(y => dataByYear[y].slice(0, 5)).concat(totals);
+    const { ticks, min, max } = niceTicks(Math.min(...allVals, 0), Math.max(...allVals, 0), 4);
+    const x0 = PAD_L, x1 = W - PAD_R, y0 = H - PAD_B, y1 = PAD_T;
+    const n = years.length;
+    const bandW = (x1 - x0) / n;
+    const barW = Math.min(28, bandW * 0.55);
+    function scaleY(v){ return y0 + ((v - min) / (max - min || 1)) * (y1 - y0); }
+    function xCenter(i){ return x0 + bandW * (i + 0.5); }
+
+    const svg = svgShell(W, H);
+    const gridline = cssVar("--gridline"), axisLabel = cssVar("--ink-secondary"), baseline = cssVar("--baseline");
+
+    ticks.forEach(t => {
+      const y = scaleY(t);
+      const line = ns("line");
+      line.setAttribute("x1", x0); line.setAttribute("x2", x1);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", t === 0 ? baseline : gridline); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      const label = ns("text");
+      label.setAttribute("x", x0 - 8); label.setAttribute("y", y + 4);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "12");
+      label.setAttribute("fill", axisLabel); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = fmt(t);
+      svg.appendChild(label);
+    });
+
+    years.forEach((yr, i) => {
+      const vals = dataByYear[yr];
+      let posOff = 0, negOff = 0;
+      order.forEach((o, k) => {
+        const v = vals[k];
+        const top = v >= 0 ? posOff + v : negOff;
+        const bottom = v >= 0 ? posOff : negOff + v;
+        if (v >= 0) posOff += v; else negOff += v;
+        const rect = ns("rect");
+        rect.setAttribute("x", (xCenter(i) - barW / 2).toFixed(2));
+        rect.setAttribute("y", scaleY(top).toFixed(2));
+        rect.setAttribute("width", barW.toFixed(2));
+        rect.setAttribute("height", Math.max(0, scaleY(bottom) - scaleY(top)).toFixed(2));
+        rect.setAttribute("fill", cssVar(o.color));
+        svg.appendChild(rect);
+      });
+      const label = ns("text");
+      label.setAttribute("x", xCenter(i)); label.setAttribute("y", H - 4);
+      label.setAttribute("text-anchor", "middle"); label.setAttribute("font-size", "11");
+      label.setAttribute("fill", axisLabel); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = "'" + String(yr).slice(2);
+      svg.appendChild(label);
+    });
+
+    const totalColor = cssVar("--ink-primary");
+    const d = years.map((yr, i) => (i === 0 ? "M" : "L") + xCenter(i).toFixed(2) + "," + scaleY(dataByYear[yr][5]).toFixed(2)).join(" ");
+    const path = ns("path");
+    path.setAttribute("d", d); path.setAttribute("fill", "none");
+    path.setAttribute("stroke", totalColor); path.setAttribute("stroke-width", "2");
+    path.setAttribute("stroke-linejoin", "round"); path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-dasharray", "3 3");
+    svg.appendChild(path);
+
+    const mountDiv = document.createElement("div");
+    mountDiv.className = "chart-mount";
+    mountDiv.appendChild(svg);
+    card.appendChild(mountDiv);
+    const note = document.createElement("div");
+    note.className = "caption-note";
+    note.textContent = "単位: " + unit + " ・ 破線=サービス収支合計 ・ 出典: 財務省・日本銀行「国際収支統計」(年次)";
+    card.appendChild(note);
+
+    renderBopTable(
+      card,
+      ["年"].concat(order.map(o => o.label)).concat(["合計"]),
+      years.map(yr => [yr].concat(dataByYear[yr].map(v => fmt(v, { maximumFractionDigits: 2 }))))
+    );
+  }
+
+  // Single-series bar chart, x = integer year
+  function renderBopBar(mount, title, points, unit){
+    const card = mount;
+    const head = document.createElement("div");
+    head.className = "chart-head";
+    head.innerHTML = '<div class="name">' + title + '</div>';
+    card.appendChild(head);
+
+    const W = 480, H = 220, PAD_L = 50, PAD_R = 14, PAD_T = 14, PAD_B = 26;
+    const values = points.map(p => p.value);
+    const { ticks, min, max } = niceTicks(Math.min(...values, 0), Math.max(...values, 0), 4);
+    const x0 = PAD_L, x1 = W - PAD_R, y0 = H - PAD_B, y1 = PAD_T;
+    const n = points.length;
+    const bandW = (x1 - x0) / n;
+    const barW = Math.min(14, bandW * 0.6);
+    function scaleY(v){ return y0 + ((v - min) / (max - min || 1)) * (y1 - y0); }
+    function xCenter(i){ return x0 + bandW * (i + 0.5); }
+
+    const svg = svgShell(W, H);
+    const gridline = cssVar("--gridline"), axisLabel = cssVar("--ink-secondary"), baseline = cssVar("--baseline");
+    const color = cssVar("--series-1");
+
+    ticks.forEach(t => {
+      const y = scaleY(t);
+      const line = ns("line");
+      line.setAttribute("x1", x0); line.setAttribute("x2", x1);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", t === 0 ? baseline : gridline); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      const label = ns("text");
+      label.setAttribute("x", x0 - 8); label.setAttribute("y", y + 4);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("font-size", "12");
+      label.setAttribute("fill", axisLabel); label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = fmt(t);
+      svg.appendChild(label);
+    });
+
+    points.forEach((p, i) => {
+      const top = Math.min(scaleY(0), scaleY(p.value));
+      const bottom = Math.max(scaleY(0), scaleY(p.value));
+      const rect = ns("rect");
+      rect.setAttribute("x", (xCenter(i) - barW / 2).toFixed(2));
+      rect.setAttribute("y", top.toFixed(2));
+      rect.setAttribute("width", barW.toFixed(2));
+      rect.setAttribute("height", Math.max(0, bottom - top).toFixed(2));
+      rect.setAttribute("fill", color);
+      svg.appendChild(rect);
+    });
+
+    yearTicks(points).forEach((yr, i, arr) => {
+      const label = ns("text");
+      label.setAttribute("x", x0 + bandW * (points.findIndex(p => p.y === yr) + 0.5));
+      label.setAttribute("y", H - 4);
+      label.setAttribute("text-anchor", i === 0 ? "start" : (i === arr.length - 1 ? "end" : "middle"));
+      label.setAttribute("font-size", "12"); label.setAttribute("fill", axisLabel);
+      label.setAttribute("font-family", "IBM Plex Mono, monospace");
+      label.textContent = yr;
+      svg.appendChild(label);
+    });
+
+    const mountDiv = document.createElement("div");
+    mountDiv.className = "chart-mount";
+    mountDiv.appendChild(svg);
+    card.appendChild(mountDiv);
+    const note = document.createElement("div");
+    note.className = "caption-note";
+    note.textContent = "単位: " + unit + " ・ 出典: 財務省・日本銀行「国際収支統計」(年次)";
+    card.appendChild(note);
+
+    renderBopTable(card, ["年", title], points.map(p => [p.y, fmt(p.value, { maximumFractionDigits: 3 })]));
+  }
+
+  function renderBopSection(){
+    renderBopMultiLine(
+      document.getElementById("bop-catb"),
+      "経常収支・貿易収支",
+      [
+        { label: "経常収支", color: "--series-1", points: BOP_CATB_RAW.map(d => ({ y: d.y, value: d.ca * d.fx / 1000 })) },
+        { label: "貿易収支", color: "--series-2", points: BOP_CATB_RAW.map(d => ({ y: d.y, value: d.tb * d.fx / 1000 })) }
+      ],
+      "兆円"
+    );
+    renderBopMultiLine(
+      document.getElementById("bop-ratediff"),
+      "日米10年金利差(米-日)",
+      [{ label: "金利差", color: "--series-1", points: BOP_RATE_RAW.map(d => ({ y: d.y, value: d.us - d.jp })) }],
+      "%pt"
+    );
+    const fiveYears = Object.keys(BOP_FIVE_RAW).map(Number).sort((a, b) => a - b);
+    renderBopStacked(
+      document.getElementById("bop-five"),
+      "サービス収支の内訳(5分類)",
+      fiveYears, BOP_FIVE_RAW, BOP_FIVE_ORDER, "兆円"
+    );
+    renderBopBar(
+      document.getElementById("bop-fdi"),
+      "対日直接投資フロー",
+      BOP_FDI_RAW.map(d => ({ y: d.y, value: d.v })),
+      "兆円"
+    );
+  }
+
   async function main(){
     const banner = document.getElementById("error-banner");
     try {
@@ -338,6 +741,7 @@ footer a{color:var(--series-1);}
   }
 
   main();
+  renderBopSection();
 })();
 </script>
 </body>
