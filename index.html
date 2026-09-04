@@ -65,6 +65,13 @@ header.top .sub{color:var(--ink-secondary);font-size:14.5px;max-width:640px;}
 .meta-row{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:18px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-muted);}
 .meta-row .dot{color:var(--series-1);}
 
+.quote-card{margin:14px 0 6px;padding:14px 18px;background:var(--bg-surface-2);border:1px solid var(--border);border-left:3px solid var(--series-1);border-radius:8px;max-width:660px;}
+.quote-card .quote-label{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;color:var(--ink-muted);text-transform:uppercase;margin-bottom:6px;}
+.quote-card .qtext{font-family:"Shippori Mincho",serif;font-size:15px;font-weight:700;color:var(--ink-primary);margin:0 0 6px;line-height:1.65;}
+.quote-card .qmeta{font-size:12px;color:var(--ink-secondary);margin:0 0 4px;}
+.quote-card .qmeta b{color:var(--ink-primary);font-weight:700;}
+.quote-card .qnote{font-size:12.5px;color:var(--ink-muted);margin:0;}
+
 section.term-block{padding:36px 24px;border-bottom:1px solid var(--border);}
 section.term-block .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;color:var(--ink-muted);text-transform:uppercase;margin-bottom:8px;}
 section.term-block h2{font-size:clamp(19px,2.6vw,23px);margin-bottom:20px;}
@@ -141,6 +148,12 @@ footer a{color:var(--series-1);}
 <header class="top">
   <div class="wrap">
     <h1>日本経済モニター</h1>
+    <div class="quote-card" id="quote-card">
+      <div class="quote-label">今日の経済格言</div>
+      <p class="qtext" id="quote-text">読み込み中…</p>
+      <p class="qmeta" id="quote-meta"></p>
+      <p class="qnote" id="quote-note"></p>
+    </div>
     <p class="sub">FRED(セントルイス連邦準備銀行)が公開する統計データを毎日自動取得し、短期・中期・長期の視点で日本経済の主要指標を追跡するダッシュボード。</p>
     <div class="meta-row">
       <span><span class="dot">●</span> 最終更新: <span id="updated-at">読み込み中…</span></span>
@@ -856,6 +869,45 @@ footer a{color:var(--series-1);}
     );
   }
 
+  // ============================================================
+  // 今日の経済格言 — JST基準の日付から決定的に1件選ぶ(全訪問者で同じ日は同じ格言)。
+  // ============================================================
+  const QUOTES = [
+    { text: "われわれが食事にありつけるのは、肉屋や酒屋やパン屋の博愛心のおかげではなく、彼らが自分自身の利益に関心を持っているからである。", author: "アダム・スミス", source: "『国富論』第1篇 第2章 (1776)", note: "自己利益の追求が結果として社会全体の利益をもたらすという「見えざる手」の思想を象徴する一節。" },
+    { text: "彼は自分自身の利益だけを意図しているのだが、見えざる手に導かれて、自分がまったく意図していなかった目的を促進することになる。", author: "アダム・スミス", source: "『国富論』第4篇 第2章 (1776)", note: "「見えざる手」という語そのものが登場する、市場経済思想の原点となった一文。" },
+    { text: "長期的には、われわれはみな死んでしまう。", author: "ジョン・メイナード・ケインズ", source: "『貨幣改革論』(1923)", note: "長期的な市場均衡を待つだけの経済学を批判し、短期的な政策対応の重要性を説いた言葉。" },
+    { text: "投資に関する我々の決定の多くは、数学的期待値の計算にではなく、自生的な楽観、すなわちアニマル・スピリットに支えられている。", author: "ジョン・メイナード・ケインズ", source: "『雇用・利子および貨幣の一般理論』第12章 (1936)", note: "人間の非合理な心理が景気変動を左右するという、行動経済学にも通じる指摘。" },
+    { text: "インフレーションは、いつ、いかなる場所においても貨幣的現象である。", author: "ミルトン・フリードマン", source: "講演「貨幣理論への反革命」(1970)", note: "インフレの原因を貨幣供給量の過剰にあるとするマネタリズムの中心的主張。" },
+    { text: "資本主義を内側から動かしているのは、絶えず古い構造を破壊し、新しい構造を創造する「創造的破壊」の過程である。", author: "ヨーゼフ・シュンペーター", source: "『資本主義・社会主義・民主主義』(1942)", note: "イノベーションが既存産業を淘汰しながら経済を前進させるという理論の核心。" },
+    { text: "経済統制とは、人間生活のある一部門を切り離して統制することではない。それはあらゆる目的を達成するための手段そのものを統制することである。", author: "フリードリヒ・ハイエク", source: "『隷属への道』第7章 (1944)", note: "経済的自由の制限が、やがて政治的自由の制限にもつながると警告した一節。" },
+    { text: "私的な豊かさと公的な貧しさが同居している。", author: "ジョン・ケネス・ガルブレイス", source: "『ゆたかな社会』(1958)", note: "高度成長期の豊かさの陰でインフラや公共サービスが取り残される様子を批判した表現。" },
+    { text: "生産性がすべてではない。しかし長期的には、それはほとんどすべてである。", author: "ポール・クルーグマン", source: "『格差はつくられた』原著 (1994)", note: "一国の生活水準を長期的に決めるのは、結局のところ生産性の向上だという指摘。" },
+    { text: "根拠なき熱狂が資産価格を不当に押し上げていないか。", author: "アラン・グリーンスパン", source: "FRB議長講演 (1996年12月5日)", note: "ITバブル前夜に株価の過熱へ警鐘を鳴らした発言。後にロバート・シラーの著書名にも使われた。" },
+    { text: "安定それ自体が、不安定を生み出す。", author: "ハイマン・ミンスキー", source: "『不安定な経済を安定させる』(1986)", note: "好況が続くほどリスクを取った借り入れが増え、やがて金融危機の芽になるという「金融不安定性仮説」の要旨。" },
+    { text: "他人が貪欲なときは恐れ、他人が恐れているときは貪欲であれ。", author: "ウォーレン・バフェット", source: "バークシャー・ハサウェイ株主への手紙", note: "市場心理と逆張りの重要性を説いた、バフェットが繰り返し用いてきた投資哲学。" },
+    { text: "経済学者に必要なのは、冷静な頭脳と温かい心である。", author: "アルフレッド・マーシャル", source: "ケンブリッジ大学就任講演 (1885)", note: "経済学は数字の学問である以上に、貧困など社会問題を解決するための実践学であるべきだという姿勢を示した言葉。" },
+    { text: "資本と人口の静止状態は、人間の進歩が止まることを意味するものでは決してない。", author: "ジョン・スチュアート・ミル", source: "『経済学原理』第4篇 第6章 (1848)", note: "経済成長がすべてではなく、成熟した「定常状態」の社会にも価値があるとした先駆的な視点。" },
+    { text: "開発とは、人々が享受する実質的な自由を拡大する過程として理解されるべきである。", author: "アマルティア・セン", source: "『自由と経済開発』(1999)", note: "GDPの大きさだけでなく、人が自分の人生を選び取る自由の広がりこそが「発展」だとした潜在能力アプローチ。" },
+    { text: "『論語』と算盤というかけ離れたものを一致させることが、私にとって大切な仕事である。", author: "渋沢栄一", source: "『論語と算盤』(1916)", note: "利益の追求(算盤)と道徳(論語)は両立すべきだとした、日本近代資本主義の父の経営哲学。" },
+    { text: "道徳を忘れた経済は罪悪であり、経済を忘れた道徳は寝言である。", author: "二宮尊徳(伝)", source: "報徳思想として伝わる言葉", note: "経済合理性と倫理はどちらも欠かせないという、江戸後期の農政家に由来するとされる有名な教え。" },
+    { text: "これまでのあらゆる社会の歴史は、階級闘争の歴史である。", author: "カール・マルクス、フリードリヒ・エンゲルス", source: "『共産党宣言』(1848)", note: "資本主義社会における労働と資本の対立構造を分析した、マルクス経済学の出発点となる一文。" }
+  ];
+
+  function jstDateKey(){
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  }
+  function dayOfYear(dateKey){
+    const [y, m, d] = dateKey.split("-").map(Number);
+    return Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000);
+  }
+  function renderQuote(){
+    const idx = dayOfYear(jstDateKey()) % QUOTES.length;
+    const q = QUOTES[idx];
+    document.getElementById("quote-text").textContent = q.text;
+    document.getElementById("quote-meta").innerHTML = "<b>" + q.author + "</b> ・ " + q.source;
+    document.getElementById("quote-note").textContent = q.note;
+  }
+
   const TERM_LABEL = { short: "短期", medium: "中期", long: "長期", bop: "国際収支", structure: "構造(分配)" };
   const ICON_GOOD = '<svg class="pm-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.4"/><path d="M4.8 8.2l2 2 4.4-4.6" stroke="var(--good)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const ICON_CRITICAL = '<svg class="pm-icon" viewBox="0 0 16 16" fill="none"><path d="M8 2.2 14.5 13.4H1.5Z" fill="var(--critical-soft)" stroke="var(--critical)" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.4v3.4" stroke="var(--critical)" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.6" r="0.9" fill="var(--critical)"/></svg>';
@@ -945,6 +997,7 @@ footer a{color:var(--series-1);}
   renderBopSection();
   renderStructureSection();
   renderCommentary();
+  renderQuote();
 })();
 </script>
 </body>
