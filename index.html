@@ -85,6 +85,7 @@ section.term-block h2{font-size:clamp(19px,2.6vw,23px);margin-bottom:20px;}
 .chart-stat .val{font-family:"Zen Kaku Gothic New",sans-serif;font-weight:900;font-size:26px;}
 .chart-stat .unit{font-size:13px;color:var(--ink-muted);}
 .chart-stat .asof{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-muted);margin-left:auto;}
+.live-badge{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:20px;background:var(--good-soft);color:var(--good);font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.04em;vertical-align:middle;}
 .chart-mount svg{display:block;width:100%;height:auto;}
 .empty-note{font-size:12.5px;color:var(--ink-muted);padding:18px 0;}
 
@@ -229,6 +230,7 @@ footer a{color:var(--series-1);}
   <div class="wrap">
     <p>本ページはFRED (Federal Reserve Bank of St. Louis) が提供する公開APIから取得した実測値のみを表示しています。予測・見通しは含みません。指標によって原資料の改定・遡及修正が入る場合があります。</p>
     <p>「無担保コール翌日物金利」のみ、FRED経由のOECDデータ(2〜3ヶ月遅れ)ではなく、日本銀行が公表する日次の確報値を直接取得しています。</p>
+    <p>「対ドル円相場」は<span class="live-badge">LIVE</span>表示時のみ、ページを開いた瞬間にブラウザから為替APIを直接取得したその場の値です(FREDのH.10為替統計は実際には週次更新のため)。取得に失敗した場合はFREDの直近値を表示します。</p>
     <p>「国際収支」セクションのみ財務省・日本銀行の年次統計に基づく手動更新データです。</p>
     <p>更新は GitHub Actions によるスケジュール実行(1日1回)。ソース: <a href="https://github.com/">GitHub リポジトリ</a></p>
   </div>
@@ -371,6 +373,7 @@ footer a{color:var(--series-1);}
   function renderCard(series){
     const card = document.createElement("div");
     card.className = "chart-card";
+    card.dataset.seriesId = series.id;
 
     const last = series.points && series.points.length ? series.points[series.points.length - 1] : null;
 
@@ -965,6 +968,56 @@ footer a{color:var(--series-1);}
     }
   }
 
+  // ============================================================
+  // ライブ上書き — 対応する指標だけ、ページを開くたびにブラウザから直接
+  // 為替/株価APIを叩き、その場の最新値をカードに反映する。GitHub Actions
+  // 経由のFRED日次データ(usdJpyはFREDのH.10が実は週次のため特に古く見える)
+  // の代わりに、その瞬間の値を見せるための上乗せ。取得に失敗しても
+  // 元のFREDデータ表示のまま(壊れた見た目にはしない)。
+  // ============================================================
+  const LIVE_SOURCES = {
+    usdJpy: {
+      approx: false,
+      async fetchValue(){
+        const res = await fetch("https://api.fxratesapi.com/latest?base=USD&currencies=JPY", { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const rate = data && data.rates && data.rates.JPY;
+        if (typeof rate !== "number") throw new Error("unexpected response shape");
+        return rate;
+      }
+    }
+    // sp500: Twelve DataのSPY価格×10による近似値を追加予定。
+  };
+
+  function liveAsOfLabel(approx){
+    const time = new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+    return '<span class="live-badge">' + (approx ? "LIVE(概算)" : "LIVE") + '</span>' + time + " 時点";
+  }
+
+  async function applyLiveOverlays(seriesById){
+    await Promise.all(Object.keys(LIVE_SOURCES).map(async (id) => {
+      const series = seriesById[id];
+      const card = document.querySelector('.chart-card[data-series-id="' + id + '"]');
+      if (!series || !card) return;
+      try {
+        const value = await LIVE_SOURCES[id].fetchValue();
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
+        const points = series.points || (series.points = []);
+        if (points.length && points[points.length - 1].date === today){
+          points[points.length - 1] = { date: today, value };
+        } else {
+          points.push({ date: today, value });
+        }
+        card.querySelector(".val").textContent = fmt(value, { maximumFractionDigits: 2 });
+        card.querySelector(".asof").innerHTML = liveAsOfLabel(LIVE_SOURCES[id].approx);
+        renderChart(card.querySelector(".chart-mount"), series);
+      } catch (err) {
+        console.error("live overlay failed for " + id + ":", err.message);
+      }
+    }));
+  }
+
   async function main(){
     const banner = document.getElementById("error-banner");
     try {
@@ -977,7 +1030,9 @@ footer a{color:var(--series-1);}
         : "未取得(初回のワークフロー実行待ち)";
 
       const grids = { short: document.getElementById("grid-short"), medium: document.getElementById("grid-medium"), long: document.getElementById("grid-long") };
+      const seriesById = {};
       (data.series || []).forEach(s => {
+        seriesById[s.id] = s;
         const grid = grids[s.term];
         if (grid) grid.appendChild(renderCard(s));
       });
@@ -987,6 +1042,8 @@ footer a{color:var(--series-1);}
           grids[term].innerHTML = '<div class="empty-note">この区分のデータはまだありません。</div>';
         }
       });
+
+      applyLiveOverlays(seriesById);
     } catch (err) {
       banner.textContent = "データの読み込みに失敗しました(" + err.message + ")。GitHub Actions がまだ一度も実行されていないか、docs/data/latest.json が存在しない可能性があります。";
       banner.classList.add("show");
