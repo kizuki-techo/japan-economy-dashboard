@@ -370,6 +370,10 @@ footer a{color:var(--series-1);}
     mount.appendChild(svg);
   }
 
+  function dataTableRowsHtml(points){
+    return points.slice().reverse().map(p => "<tr><td>" + p.date + "</td><td>" + fmt(p.value, { maximumFractionDigits: 3 }) + "</td></tr>").join("");
+  }
+
   function renderCard(series){
     const card = document.createElement("div");
     card.className = "chart-card";
@@ -393,7 +397,7 @@ footer a{color:var(--series-1);}
       const details = document.createElement("details");
       details.className = "data-table";
       details.innerHTML = '<summary>データを表で見る</summary><div class="table-scroll"><table><thead><tr><th>日付</th><th>値</th></tr></thead><tbody>' +
-        series.points.slice().reverse().map(p => "<tr><td>" + p.date + "</td><td>" + fmt(p.value, { maximumFractionDigits: 3 }) + "</td></tr>").join("") +
+        dataTableRowsHtml(series.points) +
         "</tbody></table></div>";
       card.appendChild(details);
     }
@@ -1012,6 +1016,8 @@ footer a{color:var(--series-1);}
         card.querySelector(".val").textContent = fmt(value, { maximumFractionDigits: 2 });
         card.querySelector(".asof").innerHTML = liveAsOfLabel(LIVE_SOURCES[id].approx);
         renderChart(card.querySelector(".chart-mount"), series);
+        const tbody = card.querySelector(".table-scroll tbody");
+        if (tbody) tbody.innerHTML = dataTableRowsHtml(series.points);
       } catch (err) {
         console.error("live overlay failed for " + id + ":", err.message);
       }
