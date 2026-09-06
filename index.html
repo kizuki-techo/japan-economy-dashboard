@@ -230,7 +230,7 @@ footer a{color:var(--series-1);}
   <div class="wrap">
     <p>本ページはFRED (Federal Reserve Bank of St. Louis) が提供する公開APIから取得した実測値のみを表示しています。予測・見通しは含みません。指標によって原資料の改定・遡及修正が入る場合があります。</p>
     <p>「無担保コール翌日物金利」のみ、FRED経由のOECDデータ(2〜3ヶ月遅れ)ではなく、日本銀行が公表する日次の確報値を直接取得しています。</p>
-    <p>「対ドル円相場」は<span class="live-badge">LIVE</span>表示時のみ、ページを開いた瞬間にブラウザから為替APIを直接取得したその場の値です(FREDのH.10為替統計は実際には週次更新のため)。取得に失敗した場合はFREDの直近値を表示します。</p>
+    <p>「対ドル円相場」もFREDではなくfxratesapi.comから取得しています(FREDのH.10為替統計は実際には週次更新で欠落が生じるため)。<span class="live-badge">LIVE</span>表示時のみ、ページを開いた瞬間の値に上書きされます(取得失敗時は直近の日次値を表示)。</p>
     <p>「国際収支」セクションのみ財務省・日本銀行の年次統計に基づく手動更新データです。</p>
     <p>更新は GitHub Actions によるスケジュール実行(1日1回)。ソース: <a href="https://github.com/">GitHub リポジトリ</a></p>
   </div>
