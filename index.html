@@ -106,6 +106,7 @@ section.term-block h2{font-size:clamp(19px,2.6vw,23px);margin-bottom:20px;}
 .reading-item .rd{font-size:12.5px;color:var(--ink-secondary);}
 .term-tag{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--ink-muted);text-transform:uppercase;margin:20px 0 10px;}
 .term-tag:first-of-type{margin-top:4px;}
+.term-tag .term-tag-date{text-transform:none;letter-spacing:normal;margin-left:8px;}
 .pm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:6px;}
 .pm-col .pm-head{display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;margin-bottom:10px;}
 .pm-col ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;}
@@ -931,9 +932,11 @@ footer a{color:var(--series-1);}
 
       html += "<h3>各グラフの読み取りポイント</h3>";
       ["short", "medium", "long", "bop", "structure"].forEach(term => {
-        const items = (c.readingPoints && c.readingPoints[term]) || [];
+        const section = (c.readingPoints && c.readingPoints[term]) || {};
+        const items = Array.isArray(section) ? section : (section.items || []); // back-compat with the old bare-array shape
         if (!items.length) return;
-        html += '<div class="term-tag">' + TERM_LABEL[term] + '</div><div class="reading-grid">';
+        const dateLabel = section.updatedAt ? '<span class="term-tag-date">更新: ' + section.updatedAt + '</span>' : "";
+        html += '<div class="term-tag">' + TERM_LABEL[term] + dateLabel + '</div><div class="reading-grid">';
         html += items.map(it =>
           '<div class="reading-item"><div class="rt">' + it.title + '</div><div class="rd">' + it.text + '</div></div>'
         ).join("");
