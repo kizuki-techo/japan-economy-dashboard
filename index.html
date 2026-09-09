@@ -848,6 +848,29 @@ footer a{color:var(--series-1);}
     );
   }
 
+  // 日米10年金利差は、他のBOPセクションのグラフ(貿易収支・サービス収支など)と
+  // 違って本質的に年次限定の統計ではない(米10年債はFREDのDGS10で日次、日本10年債は
+  // 財務省が日次でCSV公開)。そのため、data/latest.json に rateDiffLive があれば
+  // 当年分を年初来平均で上乗せし、2025年で止まったままにしない。それ以外の年は
+  // これまで通り財務省・日本銀行の年次値(手打ちのBOP_RATE_RAW)。
+  function renderRateDiffChart(liveYearPoint){
+    const mount = document.getElementById("bop-ratediff");
+    mount.innerHTML = "";
+    const points = BOP_RATE_RAW.map(d => ({ y: d.y, value: d.us - d.jp }));
+    if (liveYearPoint){
+      const idx = points.findIndex(p => p.y === liveYearPoint.year);
+      if (idx === -1) points.push({ y: liveYearPoint.year, value: liveYearPoint.value });
+      else points[idx] = { y: liveYearPoint.year, value: liveYearPoint.value };
+    }
+    renderBopMultiLine(mount, "日米10年金利差(米-日)", [{ label: "金利差", color: "--series-1", points }], "%pt");
+    if (liveYearPoint){
+      const note = document.createElement("div");
+      note.className = "caption-note";
+      note.innerHTML = '<span class="live-badge">LIVE</span>' + liveYearPoint.year + '年は' + liveYearPoint.asOf + '時点までの年初来平均(財務省の国債金利情報とFREDのDGS10から自動算出)';
+      mount.appendChild(note);
+    }
+  }
+
   function renderBopSection(){
     renderBopMultiLine(
       document.getElementById("bop-catb"),
@@ -858,12 +881,7 @@ footer a{color:var(--series-1);}
       ],
       "兆円"
     );
-    renderBopMultiLine(
-      document.getElementById("bop-ratediff"),
-      "日米10年金利差(米-日)",
-      [{ label: "金利差", color: "--series-1", points: BOP_RATE_RAW.map(d => ({ y: d.y, value: d.us - d.jp })) }],
-      "%pt"
-    );
+    renderRateDiffChart();
     const fiveYears = Object.keys(BOP_FIVE_RAW).map(Number).sort((a, b) => a - b);
     renderBopStacked(
       document.getElementById("bop-five"),
@@ -1053,6 +1071,7 @@ footer a{color:var(--series-1);}
       });
 
       applyLiveOverlays(seriesById);
+      if (data.rateDiffLive) renderRateDiffChart(data.rateDiffLive);
     } catch (err) {
       banner.textContent = "データの読み込みに失敗しました(" + err.message + ")。GitHub Actions がまだ一度も実行されていないか、docs/data/latest.json が存在しない可能性があります。";
       banner.classList.add("show");
